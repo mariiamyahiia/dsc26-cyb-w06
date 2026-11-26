@@ -5,11 +5,11 @@ import re
 import unicodedata
 
 # Hidden characters: zero-width space/joiners, word joiner, BOM, soft hyphen.
-INVISIBLE = {"​", "‌", "‍", "⁠", "﻿", "­"}
+INVISIBLE = {"\u200b", "\u200c", "\u200d", "\u2060", "\ufeff", "\u00ad"}
 # Bidi controls: ALM, LRM/RLM, LRE/RLE/PDF/LRO/RLO, LRI/RLI/FSI/PDI.
 BIDI = {"؜", "‎", "‏", *map(chr, range(0x202A, 0x202F)), *map(chr, range(0x2066, 0x206A))}
 # Arabic tatweel (U+0640) and the harakat/other marks U+064B-U+065F and U+0670.
-ARABIC_MARKS = re.compile(r"[ـً-ٰٟ]")
+ARABIC_MARKS = re.compile("[\u0640\u064b-\u065f\u0670]")
 
 
 def _is_tag(ch: str) -> bool:

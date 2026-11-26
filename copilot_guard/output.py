@@ -141,7 +141,35 @@ def parse_model_output(raw: str, *, tenant_id: str, known_alert_ids: set[str]) -
                         related_alert_ids=kept, flags=sorted(flags))      # 7
 
 
+def _strings(value):
+    """Every string in a nested alert: dictionary keys and values, list items, at any depth."""
+    stack = [value]
+    while stack:
+        item = stack.pop()
+        if isinstance(item, str):
+            yield item
+        elif isinstance(item, dict):
+            for key, val in item.items():
+                stack.append(key)
+                stack.append(val)
+        elif isinstance(item, (list, tuple)):
+            stack.extend(item)
+
+
 def triage(alert: dict, raw_output: str, *, tenant_id: str, known_alert_ids: set[str]) -> TriageResult:
     """Run detect_injection over every string in `alert`, then parse_model_output; if any signal
     fired, add flags and never let the result end up quieter than it would otherwise be."""
-    raise NotImplementedError
+    signals: set[str] = set()
+    for text in _strings(alert):
+        signals.update(detect_injection(text))
+
+    result = parse_model_output(raw_output, tenant_id=tenant_id, known_alert_ids=known_alert_ids)
+
+    if signals:
+        flags = set(result.flags) | {"possible_injection"} | {f"signal:{code}" for code in signals}
+        if SEVERITIES.index(result.severity) < SEVERITIES.index("high"):
+            result.severity = "high"                        # raise it, never lower it
+        if result.next_step == "monitor":
+            result.next_step = "escalate_to_analyst"
+        result.flags = sorted(flags)
+    return result

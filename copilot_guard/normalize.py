@@ -16,6 +16,8 @@ def _is_tag(ch: str) -> bool:
     """True for a character in the Unicode Tags block (U+E0000-U+E007F)."""
     return 0xE0000 <= ord(ch) <= 0xE007F
 
+def _is_hidden(ch: str) -> bool:
+    return ch in INVISIBLE or ch in BIDI or _is_tag(ch)
 
 def has_hidden_characters(text: str) -> bool:
     """True if `text` contains any invisible, bidi-control or Tags-block character."""
@@ -24,7 +26,11 @@ def has_hidden_characters(text: str) -> bool:
 
 def normalize(text: str) -> str:
     """Remove hidden characters, NFKC, strip Arabic tatweel/marks, casefold, collapse whitespace."""
-    raise NotImplementedError
+    text = "".join(ch for ch in text if not _is_hidden(ch))
+    text = unicodedata.normalize("NFKC", text)
+    text = ARABIC_MARKS.sub("", text)
+    text = text.casefold()
+    return " ".join(text.split())
 
 
 # The exact patterns from README.md, "What to build", part 1. Do not add your own: the grader's
@@ -54,4 +60,11 @@ PATTERNS: dict[str, list[str]] = {
 
 def detect_injection(text: str) -> list[str]:
     """A sorted list of signal codes found in `text` (see README.md for the exact rules)."""
-    raise NotImplementedError
+    signals = []
+    if has_hidden_characters(text):                 # looked for in the ORIGINAL text
+        signals.append("hidden_characters")
+    normalized = normalize(text)                     # patterns are searched in the NORMALISED text
+    for code, patterns in PATTERNS.items():
+        if any(re.search(pattern, normalized) for pattern in patterns):
+            signals.append(code)
+    return sorted(signals)

@@ -21,7 +21,7 @@ def _is_hidden(ch: str) -> bool:
 
 def has_hidden_characters(text: str) -> bool:
     """True if `text` contains any invisible, bidi-control or Tags-block character."""
-    raise NotImplementedError
+    return any(_is_hidden(ch) for ch in text)
 
 
 def normalize(text: str) -> str:
